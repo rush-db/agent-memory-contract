@@ -1,8 +1,26 @@
 {
   "name": "@rushdb/agent-memory-contract",
-  "version": "0.2.0",
   "description": "Provider-neutral RushDB agent-memory event contract and client primitives",
+  "keywords": [
+    "rushdb",
+    "agent memory",
+    "agent-memory",
+    "memory contract",
+    "event contract",
+    "conformance",
+    "json schema",
+    "openclaw",
+    "hermes",
+    "ai agents",
+    "ai-agents",
+    "llm memory",
+    "llm-memory",
+    "semantic recall",
+    "knowledge graph",
+    "knowledge-graph"
+  ],
   "license": "Apache-2.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,12 +43,14 @@
     "pack:check": "node scripts/verify-package.mjs",
     "prepack": "pnpm build",
     "types:check": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "release": "pnpm build && changeset publish"
   },
   "dependencies": {
-    "@rushdb/javascript-sdk": "workspace:*"
+    "@rushdb/javascript-sdk": "^2.11.0"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.10",
     "@types/node": "^20.17.23",
     "rimraf": "^6.0.1",
     "typescript": "5.7.2",
@@ -39,5 +59,16 @@
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
+  },
+  "bugs": "https://github.com/rush-db/agent-memory-contract/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rush-db/agent-memory-contract.git"
+  },
+  "homepage": "https://github.com/rush-db/agent-memory-contract#readme",
+  "packageManager": "pnpm@10.1.0",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=10.0.0"
   }
 }

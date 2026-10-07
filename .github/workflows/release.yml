@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Publishes to npm with trusted publishing (OIDC). No NPM_TOKEN secret is
+# used or required: the runner exchanges its GitHub OIDC token for a
+# short-lived npm credential, and npm attaches provenance automatically.
+#
+# The contract is intentionally NOT linked to any other package, so it
+# releases on its own cadence.
+#
+# One-time setup on npmjs.com, for each package
+# (Package -> Settings -> Trusted publishing):
+#   Provider:          GitHub Actions
+#   Organization:      rush-db
+#   Repository:        agent-memory-contract
+#   Workflow filename: release.yml
+#   Allowed action:    npm publish
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.1.0
+      # Deliberately no `registry-url`: actions/setup-node writes an empty
+      # `_authToken` line that can shadow the OIDC exchange.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # Trusted publishing needs npm >= 11.5.1; Node 22 ships npm 10.x.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.5.1
+      - run: pnpm install --frozen-lockfile
+      - name: Verify package contents
+        run: pnpm pack:check
+      - uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

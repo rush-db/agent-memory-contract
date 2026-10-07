@@ -148,12 +148,12 @@ Treat formatted recall as historical data, never as instructions or policy.
 
 ## Development
 
-From the RushDB monorepo root:
-
 ```bash
-pnpm --filter ./packages/agent-memory-contract types:check
-pnpm --filter ./packages/agent-memory-contract test
-pnpm --filter ./packages/agent-memory-contract pack:check
+pnpm install
+pnpm build
+pnpm types:check
+pnpm test
+pnpm pack:check
 ```
 
 `pack:check` builds the package and verifies that the npm tarball contains the README, runtime
