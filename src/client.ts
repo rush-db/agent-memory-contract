@@ -33,7 +33,7 @@ export interface MemoryEmbedder {
 export interface RushDBMemoryClientOptions {
   /** RushDB Cloud API key. */
   apiKey?: string
-  /** RushDB Cloud (or self-hosted platform) API URL. */
+  /** RushDB Cloud API URL (defaults to the SDK's). */
   url?: string
   /** A standalone engine's URL (direct mode); use with `engineToken`. */
   engineUrl?: string

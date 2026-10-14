@@ -101,8 +101,8 @@ Recall is a vector search, so stored memories need embeddings. There are two way
 
 | | Embeddings | Connect with |
 | --- | --- | --- |
-| RushDB Cloud (or a self-hosted platform) | managed: the platform embeds each summary and query | `apiKey` (and `url`) |
-| Any RushDB, including a standalone engine | yours: pass an `embedder` | `engineUrl` and `engineToken` (and `scope` on a multitenant engine), or `apiKey` |
+| RushDB Cloud | managed: RushDB Cloud embeds each summary and query | `apiKey` (and `url`) |
+| A self-hosted RushDB engine, or RushDB Cloud | yours: pass an `embedder` | `engineUrl` and `engineToken` (and `scope` on a multitenant engine), or `apiKey` |
 
 ```typescript
 const memory = new RushDBAgentMemory({
