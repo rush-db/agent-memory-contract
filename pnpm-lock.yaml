@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@rushdb/javascript-sdk':
-        specifier: ^2.11.0 || ^3.0.0
-        version: 2.11.0
+        specifier: ^3.0.0
+        version: 3.0.0
     devDependencies:
       '@changesets/cli':
         specifier: ^2.27.10
@@ -392,8 +392,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@rushdb/javascript-sdk@2.11.0':
-    resolution: {integrity: sha512-c1tfEMcu2DnRuM6+eXG3sP9QWIgDgCG+yf2WR8kZJJBHbHTEiP2e/UWBAKJoXSff/Zu0sIpC4dwgV65v2WYDig==}
+  '@rushdb/javascript-sdk@3.0.0':
+    resolution: {integrity: sha512-4bDl+4OvaCsrdWrysAzpxES4j5rd/SjR/O21VIuYb8iHVQktBnczPud0KYuSC7N4lsJmn1jLkQ29CcvZpTp52A==}
+    engines: {node: '>=18.0.0', pnpm: '>=10.0.0'}
 
   '@sinclair/typebox@0.27.12':
     resolution: {integrity: sha512-hhyNJ+nbR6ZR7pToHvllEFun9TL0sbL+tk/ON75lo+Xas054uez98qRbsuNt7MBCyZKK4+8Yli/OAGZhmfBZ/g==}
@@ -1345,7 +1346,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.64.1':
     optional: true
 
-  '@rushdb/javascript-sdk@2.11.0': {}
+  '@rushdb/javascript-sdk@3.0.0': {}
 
   '@sinclair/typebox@0.27.12': {}
 
