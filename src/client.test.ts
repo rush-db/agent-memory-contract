@@ -102,4 +102,50 @@ describe('RushDBAgentMemory', () => {
     expect(recalled).toHaveLength(1)
     expect(recalled[0]?.text).toContain('TypeScript')
   })
+
+  it('embeds on the client when given an embedder', async () => {
+    const db = fakeDB()
+    const embed = vi.fn(async (texts: string[]) => texts.map(() => [0.1, 0.2, 0.3]))
+    const memory = new RushDBAgentMemory({ db: db as never, embedder: { dimensions: 3, embed } })
+
+    await memory.ensureIndexes()
+    expect(db.ai.indexes.create).toHaveBeenCalledWith({
+      label: 'EPISODE',
+      propertyName: 'summary',
+      external: true,
+      dimensions: 3,
+      similarityFunction: 'cosine'
+    })
+
+    const event = createEpisodeEvent(episodeInput)
+    await memory.persistEpisode(event)
+    expect(db.records.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: 'EPISODE',
+        vectors: [{ propertyName: 'summary', vector: [0.1, 0.2, 0.3], similarityFunction: 'cosine' }]
+      })
+    )
+
+    await memory.recall({
+      query: 'language choice',
+      agentId: 'main',
+      profileId: 'default',
+      privacyScope: 'private',
+      participantScopeHash: 'scope-a',
+      sandboxEligible: false,
+      includeFacts: false
+    })
+    const search = (db.records.vectorSearch.mock.calls as any[][])[0][0]
+    expect(search.queryVector).toEqual([0.1, 0.2, 0.3])
+    expect(search.query).toBeUndefined()
+  })
+
+  it('refuses a standalone engine without an embedder', () => {
+    const db = { ...fakeDB(), direct: {} }
+    expect(() => new RushDBAgentMemory({ db: db as never })).toThrow(/embedder/)
+    expect(
+      () => new RushDBAgentMemory({ db: db as never, embedder: { dimensions: 3, embed: async () => [] } })
+    ).not.toThrow()
+  })
 })
+

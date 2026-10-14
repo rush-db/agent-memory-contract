@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@rushdb/javascript-sdk':
-        specifier: ^2.11.0
+        specifier: ^2.11.0 || ^3.0.0
         version: 2.11.0
     devDependencies:
       '@changesets/cli':
