@@ -92,8 +92,32 @@ const recalled = await memory.recall({
 const context = formatRecalledMemories(recalled)
 ```
 
-`ensureIndexes()` creates managed embedding indexes for `EPISODE.summary` and
-`MEMORY_FACT.text` when they do not already exist.
+`ensureIndexes()` creates the vector indexes for `EPISODE.summary` and `MEMORY_FACT.text` when
+they do not already exist.
+
+## RushDB Cloud or a standalone engine
+
+Recall is a vector search, so stored memories need embeddings. There are two ways to get them:
+
+| | Embeddings | Connect with |
+| --- | --- | --- |
+| RushDB Cloud | managed: RushDB Cloud embeds each summary and query | `apiKey` (and `url`) |
+| A self-hosted RushDB engine, or RushDB Cloud | yours: pass an `embedder` | `engineUrl` and `engineToken` (and `scope` on a multitenant engine), or `apiKey` |
+
+```typescript
+const memory = new RushDBAgentMemory({
+  engineUrl: 'http://127.0.0.1:3000',
+  engineToken: process.env.RUSHDB_ENGINE_TOKEN,
+  embedder: {
+    dimensions: 1536,
+    embed: async (texts) => (await openai.embeddings.create({ model: 'text-embedding-3-small', input: texts })).data.map((d) => d.embedding)
+  }
+})
+```
+
+With an `embedder`, `ensureIndexes()` creates external indexes of its `dimensions`, each episode and
+fact is written with its vector, and `recall()` searches with the embedded query. A standalone engine
+has no managed embeddings, so the constructor refuses one without an `embedder`.
 
 ## Event model
 

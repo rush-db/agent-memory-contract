@@ -15,46 +15,112 @@ import type {
 type UnknownRecord = DBRecordInstance<any>
 type UnknownRecords = DBRecordsArrayInstance<any>
 
+/**
+ * Turns text into vectors on the client. With an embedder the memory keeps its
+ * own vectors (external indexes); without one it relies on RushDB Cloud's
+ * managed embeddings. A standalone engine has no managed embeddings, so it
+ * needs an embedder.
+ */
+export interface MemoryEmbedder {
+  /** Length of every vector `embed` returns. */
+  dimensions: number
+  /** How vectors are compared; defaults to `cosine`. */
+  similarity?: 'cosine' | 'euclidean'
+  /** One vector per text, in order. */
+  embed(texts: string[]): Promise<number[][]>
+}
+
 export interface RushDBMemoryClientOptions {
+  /** RushDB Cloud API key. */
   apiKey?: string
+  /** RushDB Cloud API URL (defaults to the SDK's). */
   url?: string
+  /** A standalone engine's URL (direct mode); use with `engineToken`. */
+  engineUrl?: string
+  /** The standalone engine's token. */
+  engineToken?: string
+  /** Tenant on a multitenant standalone engine. */
+  scope?: string
+  /** A client to use as is. */
   db?: RushDB
+  /** Client-side embeddings; required on a standalone engine. */
+  embedder?: MemoryEmbedder
   recentLimit?: number
 }
 
+const MEMORY_INDEXES = [
+  { label: 'EPISODE', propertyName: 'summary' },
+  { label: 'MEMORY_FACT', propertyName: 'text' }
+] as const
+
 export class RushDBAgentMemory {
   private readonly db: RushDB
+  private readonly embedder?: MemoryEmbedder
   private readonly recent = new Map<string, AgentMemoryEpisodeV1>()
   private readonly recentLimit: number
 
   public constructor(options: RushDBMemoryClientOptions) {
     if (options.db) {
       this.db = options.db
+    } else if (options.engineUrl) {
+      if (!options.engineToken) {
+        throw new Error('A standalone engine needs its token: pass `engineToken` with `engineUrl`')
+      }
+      this.db = new RushDB(options.engineToken, {
+        direct: true,
+        engineUrl: options.engineUrl,
+        ...(options.scope ? { scope: options.scope } : {})
+      })
     } else {
       if (!options.apiKey) {
-        throw new Error('RUSHDB_API_KEY is required')
+        throw new Error('RUSHDB_API_KEY is required (or `engineUrl` and `engineToken` for a standalone engine)')
       }
       this.db = new RushDB(options.apiKey, options.url ? { url: options.url } : undefined)
+    }
+    this.embedder = options.embedder
+    if (this.db.direct && !this.embedder) {
+      throw new Error(
+        'A standalone RushDB engine has no managed embeddings: pass an `embedder` so memory can be recalled'
+      )
     }
     this.recentLimit = Math.max(1, options.recentLimit ?? 128)
   }
 
+  /**
+   * Declares the vector indexes recall uses: managed ones (RushDB Cloud embeds
+   * the text), or external ones of the embedder's dimensions.
+   */
   public async ensureIndexes(): Promise<void> {
-    const existing = await this.db.ai.indexes.find()
-    const indexes = existing.data ?? []
-    const wanted = [
-      { label: 'EPISODE', propertyName: 'summary' },
-      { label: 'MEMORY_FACT', propertyName: 'text' }
-    ]
-
-    for (const candidate of wanted) {
+    const indexes = (await this.db.ai.indexes.find()).data ?? []
+    for (const candidate of MEMORY_INDEXES) {
       const found = indexes.some(
-        (index) => index.label === candidate.label && index.propertyName === candidate.propertyName
+        (index) =>
+          index.label === candidate.label &&
+          index.propertyName === candidate.propertyName &&
+          (!this.embedder ||
+            (index.sourceType === 'external' &&
+              Number(index.dimensions) === this.embedder.dimensions &&
+              index.similarityFunction === (this.embedder.similarity ?? 'cosine')))
       )
-      if (!found) {
-        await this.db.ai.indexes.create(candidate)
-      }
+      if (found) continue
+      await this.db.ai.indexes.create(
+        this.embedder ?
+          {
+            ...candidate,
+            external: true,
+            dimensions: this.embedder.dimensions,
+            similarityFunction: this.embedder.similarity ?? 'cosine'
+          }
+        : { ...candidate }
+      )
     }
+  }
+
+  /** The record's vector for `propertyName`, when the memory embeds on the client. */
+  private async vectorsFor(propertyName: 'summary' | 'text', text: string) {
+    if (!this.embedder) return undefined
+    const [vector] = await this.embedder.embed([boundedText(text, 4000)])
+    return [{ propertyName, vector, similarityFunction: this.embedder.similarity ?? 'cosine' }]
   }
 
   public rememberRecent(input: AgentMemoryEpisodeInput | AgentMemoryEpisodeV1): AgentMemoryEpisodeV1 {
@@ -73,20 +139,24 @@ export class RushDBAgentMemory {
     input: AgentMemoryEpisodeInput | AgentMemoryEpisodeV1
   ): Promise<AgentMemoryEpisodeV1> {
     const episode = this.rememberRecent(input)
+    const vectors = await this.vectorsFor('summary', episode.summary)
     await this.db.records.upsert({
       label: 'EPISODE',
       data: { ...episode },
-      options: { mergeBy: ['eventId'], mergeStrategy: 'append' }
+      options: { mergeBy: ['eventId'], mergeStrategy: 'append' },
+      ...(vectors ? { vectors } : {})
     })
     return episode
   }
 
   public async persistFact(input: AgentMemoryFactInput | AgentMemoryFactV1): Promise<AgentMemoryFactV1> {
     const fact = 'factId' in input ? input : createFactEvent(input)
+    const vectors = await this.vectorsFor('text', fact.text)
     await this.db.records.upsert({
       label: 'MEMORY_FACT',
       data: { ...fact },
-      options: { mergeBy: ['factId'], mergeStrategy: 'append' }
+      options: { mergeBy: ['factId'], mergeStrategy: 'append' },
+      ...(vectors ? { vectors } : {})
     })
     return fact
   }
@@ -98,11 +168,13 @@ export class RushDBAgentMemory {
     })
     const factWhere = buildScopeWhere(options, { activeOnly: true })
 
+    const queryVector =
+      this.embedder ? (await this.embedder.embed([boundedText(options.query, 4000)]))[0] : undefined
     const searches: Array<Promise<RecalledMemory[]>> = [
-      this.vectorRecall('EPISODE', 'summary', episodeWhere, options.query, limit)
+      this.vectorRecall('EPISODE', 'summary', episodeWhere, options.query, queryVector, limit)
     ]
     if (options.includeFacts !== false) {
-      searches.push(this.vectorRecall('MEMORY_FACT', 'text', factWhere, options.query, limit))
+      searches.push(this.vectorRecall('MEMORY_FACT', 'text', factWhere, options.query, queryVector, limit))
     }
 
     const remote = (await Promise.allSettled(searches)).flatMap((result) =>
@@ -136,12 +208,13 @@ export class RushDBAgentMemory {
     propertyName: 'summary' | 'text',
     where: Record<string, unknown>,
     query: string,
+    queryVector: number[] | undefined,
     limit: number
   ): Promise<RecalledMemory[]> {
     const result: UnknownRecords = await this.db.records.vectorSearch({
       labels: [label],
       propertyName,
-      query: boundedText(query, 4000),
+      ...(queryVector ? { queryVector } : { query: boundedText(query, 4000) }),
       where,
       limit
     })
