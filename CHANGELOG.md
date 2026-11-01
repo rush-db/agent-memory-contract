@@ -1,5 +1,11 @@
 # @rushdb/agent-memory-contract
 
+## 0.3.1
+
+### Patch Changes
+
+- 4702982: Docs and package metadata only: the README, description and keywords use RushDB's current wording, and the README has a compatibility table. No code changes.
+
 ## 0.3.0
 
 ### Minor Changes
