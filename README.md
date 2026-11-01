@@ -39,6 +39,13 @@ facts compatible across adapters without forcing runtimes to share lifecycle cod
 pnpm add @rushdb/agent-memory-contract
 ```
 
+## Compatibility
+
+| Package | RushDB 3.x and RushDB Cloud | RushDB 2.x (legacy) |
+|---|---|---|
+| `@rushdb/agent-memory-contract` | 0.3.x (needs `@rushdb/javascript-sdk` 3.x) | 0.2.0 (`@rushdb/javascript-sdk` 2.11.0): `npm i @rushdb/agent-memory-contract@0.2` |
+| `@rushdb/javascript-sdk` | 3.x | 2.11.0: `npm i @rushdb/javascript-sdk@2` |
+
 ## Quick start
 
 ```typescript
@@ -95,7 +102,7 @@ const context = formatRecalledMemories(recalled)
 `ensureIndexes()` creates the vector indexes for `EPISODE.summary` and `MEMORY_FACT.text` when
 they do not already exist.
 
-## RushDB Cloud or a standalone engine
+## RushDB Cloud or self-hosted RushDB
 
 Recall is a vector search, so stored memories need embeddings. There are two ways to get them:
 
@@ -116,7 +123,7 @@ const memory = new RushDBAgentMemory({
 ```
 
 With an `embedder`, `ensureIndexes()` creates external indexes of its `dimensions`, each episode and
-fact is written with its vector, and `recall()` searches with the embedded query. A standalone engine
+fact is written with its vector, and `recall()` searches with the embedded query. Self-hosted RushDB
 has no managed embeddings, so the constructor refuses one without an `embedder`.
 
 ## Event model
