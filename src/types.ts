@@ -1,6 +1,6 @@
 export const AGENT_MEMORY_SCHEMA_VERSION = 1 as const
 
-export type AgentMemoryRuntime = 'openclaw' | 'hermes' | 'custom'
+export type AgentMemoryRuntime = 'openclaw' | 'hermes' | 'dsh' | 'custom'
 export type MemoryPrivacyScope = 'private' | 'shared'
 export type MemoryConversationKind = 'direct' | 'local' | 'shared'
 export type MemoryVisibility = 'participant' | 'profile' | 'shared'
